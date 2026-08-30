@@ -4,32 +4,26 @@ from pathlib import Path
 
 import pytest
 
-from tech_ai.config.settings import DEFAULT_SYSTEM_PROMPT, Settings
+from tech_ai.config.settings import Settings
 from tech_ai.errors import ConfigurationError
 
 
-def test_settings_use_documented_defaults() -> None:
+def test_settings_use_documented_default() -> None:
     settings = Settings.from_environment({})
 
-    assert settings.canonical_dataset_path == Path("../tech-ingestao/artifacts/dataset")
-    assert settings.sft_output_path == Path("artifacts/sft")
-    assert settings.system_prompt == DEFAULT_SYSTEM_PROMPT
-
-
-def test_settings_read_environment_overrides() -> None:
-    settings = Settings.from_environment(
-        {
-            "TECH_AI_CANONICAL_DATASET_PATH": "input",
-            "TECH_AI_SFT_OUTPUT_PATH": "output",
-            "TECH_AI_SYSTEM_PROMPT": "Custom system prompt",
-        }
+    assert settings.model_manifest_path == Path(
+        "../tech-fine-tuning/artifacts/model/model-manifest.json"
     )
 
-    assert settings.canonical_dataset_path == Path("input")
-    assert settings.sft_output_path == Path("output")
-    assert settings.system_prompt == "Custom system prompt"
+
+def test_settings_read_environment_override() -> None:
+    settings = Settings.from_environment(
+        {"TECH_AI_MODEL_MANIFEST_PATH": "published/model-manifest.json"}
+    )
+
+    assert settings.model_manifest_path == Path("published/model-manifest.json")
 
 
-def test_settings_reject_empty_system_prompt() -> None:
+def test_settings_reject_path_without_filename() -> None:
     with pytest.raises(ConfigurationError, match="não pode ser vazio"):
-        Settings(system_prompt=" ")
+        Settings(model_manifest_path=Path("."))

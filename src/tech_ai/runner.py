@@ -1,44 +1,36 @@
-"""Interface de linha de comando do serviço de IA."""
+"""Interface de linha de comando do runtime de IA."""
 
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from tech_ai.config.settings import Settings
-from tech_ai.errors import ConfigurationError, DatasetReadError, SftPreparationError
-from tech_ai.services.sft_dataset_service import prepare_sft_dataset
+from tech_ai.errors import (
+    ConfigurationError,
+    ModelArtifactReadError,
+    ModelArtifactValidationError,
+)
+from tech_ai.services.model_artifact_service import inspect_model_artifact
 
 
 def _build_parser(settings: Settings) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tech-ai",
-        description="Prepara, treina e avalia o modelo médico do Tech Challenge.",
+        description="Consome o modelo médico pronto do Tech Challenge.",
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
-    prepare_parser = subcommands.add_parser(
-        "prepare-sft",
-        help="Converte os splits canônicos em exemplos conversacionais para SFT.",
+    inspect_parser = subcommands.add_parser(
+        "inspect-model",
+        help="Valida e exibe o manifesto de um modelo publicado.",
     )
-    prepare_parser.add_argument(
-        "--source",
+    inspect_parser.add_argument(
+        "--manifest",
         type=Path,
-        default=settings.canonical_dataset_path,
-        help="Diretório gerado pelo tech-ingestao.",
-    )
-    prepare_parser.add_argument(
-        "--output",
-        type=Path,
-        default=settings.sft_output_path,
-        help="Diretório dos JSONL conversacionais.",
-    )
-    prepare_parser.add_argument(
-        "--system-prompt",
-        default=settings.system_prompt,
-        help="Instrução de sistema repetida em cada exemplo.",
+        default=settings.model_manifest_path,
+        help="Manifesto publicado pelo tech-fine-tuning.",
     )
     return parser
 
@@ -48,23 +40,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         settings = Settings.from_environment()
         parser = _build_parser(settings)
         arguments = parser.parse_args(argv)
-        if arguments.command == "prepare-sft":
-            prepared = prepare_sft_dataset(
-                arguments.source,
-                arguments.output,
-                system_prompt=arguments.system_prompt,
-            )
-            print(
-                json.dumps(
-                    prepared.manifest["summary"],
-                    ensure_ascii=False,
-                    indent=2,
-                    sort_keys=True,
-                )
-            )
-            print(f"Dataset SFT: {arguments.output.resolve()}")
+        if arguments.command == "inspect-model":
+            artifact = inspect_model_artifact(arguments.manifest)
+            print(artifact.to_json())
             return 0
-    except (ConfigurationError, DatasetReadError, SftPreparationError) as error:
+    except (
+        ConfigurationError,
+        ModelArtifactReadError,
+        ModelArtifactValidationError,
+    ) as error:
         print(f"Erro: {error}", file=sys.stderr)
         return 2
 

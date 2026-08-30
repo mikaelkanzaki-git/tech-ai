@@ -1,1 +1,1 @@
-"""Preparação, treinamento e avaliação do modelo médico."""
+"""Runtime de consumo do modelo médico pronto."""

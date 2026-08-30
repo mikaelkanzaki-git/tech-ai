@@ -1,4 +1,4 @@
-"""Configuração explícita da preparação do dataset SFT."""
+"""Configuração explícita do runtime de modelo."""
 
 from __future__ import annotations
 
@@ -9,35 +9,27 @@ from pathlib import Path
 
 from tech_ai.errors import ConfigurationError
 
-DEFAULT_SYSTEM_PROMPT = (
-    "You are a medical information assistant. Provide educational information based on "
-    "reliable medical sources. Do not prescribe medication, diagnose a patient, or replace "
-    "a qualified healthcare professional."
-)
-
 
 @dataclass(frozen=True, slots=True)
 class Settings:
-    """Caminhos e instrução padrão, substituíveis por variáveis de ambiente."""
+    """Local do manifesto publicado, substituível por variável de ambiente."""
 
-    canonical_dataset_path: Path = Path("../tech-ingestao/artifacts/dataset")
-    sft_output_path: Path = Path("artifacts/sft")
-    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    model_manifest_path: Path = Path(
+        "../tech-fine-tuning/artifacts/model/model-manifest.json"
+    )
 
     def __post_init__(self) -> None:
-        if not self.system_prompt.strip():
-            raise ConfigurationError("TECH_AI_SYSTEM_PROMPT não pode ser vazio.")
+        if not self.model_manifest_path.name:
+            raise ConfigurationError("TECH_AI_MODEL_MANIFEST_PATH não pode ser vazio.")
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> Settings:
         values = environment if environment is not None else os.environ
         return cls(
-            canonical_dataset_path=Path(
+            model_manifest_path=Path(
                 values.get(
-                    "TECH_AI_CANONICAL_DATASET_PATH",
-                    "../tech-ingestao/artifacts/dataset",
+                    "TECH_AI_MODEL_MANIFEST_PATH",
+                    "../tech-fine-tuning/artifacts/model/model-manifest.json",
                 )
             ),
-            sft_output_path=Path(values.get("TECH_AI_SFT_OUTPUT_PATH", "artifacts/sft")),
-            system_prompt=values.get("TECH_AI_SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT),
         )

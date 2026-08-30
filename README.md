@@ -1,97 +1,57 @@
 # Tech AI
 
-Serviço responsável por transformar o dataset médico curado em exemplos de treinamento,
-executar o fine-tuning com Unsloth e avaliar o modelo resultante. Ele consome o contrato
-canônico do `tech-ingestao`; não conhece XML do MedQuAD, ChromaDB ou regras de ingestão.
+Runtime responsável por carregar e utilizar um modelo médico já publicado. Preparação de
+dataset, fine-tuning, avaliação de checkpoints e geração do artefato pertencem exclusivamente ao
+`tech-fine-tuning`.
 
 ## Estado atual
 
-A primeira fatia executável gera um dataset conversacional de Supervised Fine-Tuning (SFT).
-Treinamento, escolha do modelo base e integração com Unsloth serão adicionados após a validação
-de GPU/CUDA ou a escolha de uma GPU em nuvem.
+A primeira fatia estabelece a fronteira entre os dois serviços. O `tech-ai` consegue ler e
+validar o manifesto de um modelo pronto, mas ainda não baixa pesos nem executa inferência. O
+runtime concreto será escolhido depois que o primeiro modelo for produzido.
 
 ## Arquitetura
-
-O projeto segue a Arquitetura em Camadas Pragmática usada nos demais serviços:
 
 ```text
 tech-ai/
 ├── docs/
 ├── src/tech_ai/
-│   ├── config/         Settings da aplicação
-│   ├── integrations/   Leitura e escrita de datasets; futuramente Unsloth
-│   ├── models/         Contratos internos de dados
-│   ├── services/       Preparação de SFT; futuramente treino e avaliação
+│   ├── config/         Local do manifesto publicado
+│   ├── integrations/   Leitura do artefato; futuramente runtime do modelo
+│   ├── models/         Projeção interna do modelo pronto
+│   ├── services/       Validação e, futuramente, inferência
 │   ├── errors.py
 │   └── runner.py
 └── tests/unit/
 ```
 
-Pastas de API e repositories não existem porque esta fatia ainda não possui HTTP nem banco.
-A decisão arquitetural está em
+O limite arquitetural está em
 [`docs/architecture/pragmatic-layered-architecture.md`](docs/architecture/pragmatic-layered-architecture.md).
 
 ## Requisitos
 
 - Python 3.12;
 - [uv](https://docs.astral.sh/uv/);
-- `tech-ingestao` e `tech-ai` lado a lado;
-- dataset canônico `1.1` já gerado e com PII resolvida.
-
-```text
-tech-3/
-├── tech-ingestao/artifacts/dataset/
-└── tech-ai/
-```
+- um manifesto de modelo publicado pelo `tech-fine-tuning`.
 
 ## Preparação
-
-No diretório `tech-ai`:
 
 ```powershell
 uv sync --dev
 ```
 
-## Gerar o dataset SFT
-
-Com os caminhos padrão:
+## Inspecionar um modelo publicado
 
 ```powershell
-uv run tech-ai prepare-sft
+uv run tech-ai inspect-model `
+  --manifest "..\tech-fine-tuning\artifacts\model\model-manifest.json"
 ```
 
-Ou explicitamente:
+O comando valida versão do contrato, tipo do artefato, modelo base, tokenizer e procedência do
+treinamento. O contrato está em
+[`docs/contracts/model-artifact.md`](docs/contracts/model-artifact.md).
 
-```powershell
-uv run tech-ai prepare-sft `
-  --source "..\tech-ingestao\artifacts\dataset" `
-  --output "artifacts\sft"
-```
-
-O comando cria `train.jsonl`, `validation.jsonl`, `test.jsonl` e `manifest.json`. Cada exemplo
-possui mensagens `system`, `user` e `assistant`, além de metadados de rastreabilidade que não
-fazem parte do texto de treinamento.
-
-O serviço valida novamente:
-
-- versão `1.1` do contrato canônico;
-- status de curadoria aceito;
-- PII como `not_detected` ou `redacted`;
-- contagens declaradas no manifesto de origem;
-- ausência de vazamento de documento, registro e conteúdo entre splits.
-
-O contrato completo está em [`docs/data/sft-dataset.md`](docs/data/sft-dataset.md).
-
-## Configuração
-
-Os padrões podem ser substituídos por ambiente:
-
-- `TECH_AI_CANONICAL_DATASET_PATH`;
-- `TECH_AI_SFT_OUTPUT_PATH`;
-- `TECH_AI_SYSTEM_PROMPT`.
-
-A instrução de sistema também pode ser passada com `--system-prompt`. Ela fica registrada no
-manifesto junto de seu SHA-256 para reproduzir exatamente a derivação.
+O caminho padrão pode ser substituído por `TECH_AI_MODEL_MANIFEST_PATH`.
 
 ## Validar o projeto
 
@@ -101,10 +61,13 @@ uv run mypy
 uv run pytest
 ```
 
-## Próximas etapas
+## Responsabilidades que não pertencem a este repositório
 
-1. confirmar GPU, CUDA, PyTorch e versão do Unsloth;
-2. escolher um modelo base pequeno e compatível;
-3. aplicar o chat template do tokenizer somente no carregamento para treino;
-4. executar um smoke test de fine-tuning;
-5. avaliar o checkpoint nos splits de validação e teste.
+- leitura ou tratamento do MedQuAD;
+- geração de JSONL conversacional;
+- Unsloth, LoRA/QLoRA e treinamento;
+- avaliação ou seleção de checkpoint;
+- publicação dos pesos finais.
+
+Essas atividades ficam no `tech-fine-tuning`. Depois da publicação, o `tech-ai` poderá carregar
+o artefato, executar inferência e ser integrado ao assistente com LangGraph.

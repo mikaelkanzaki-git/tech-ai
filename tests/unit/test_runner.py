@@ -3,36 +3,30 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tech_ai.runner import main
 
-from .test_sft_dataset_service import create_source
+from .test_model_artifact_service import valid_manifest, write_manifest
 
 
-def test_prepare_sft_command_writes_artifacts(tmp_path: Path) -> None:
-    source = create_source(tmp_path)
-    output = tmp_path / "sft"
+def test_inspect_model_command_prints_validated_manifest(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    path = write_manifest(tmp_path / "model-manifest.json")
 
-    exit_code = main(
-        [
-            "prepare-sft",
-            "--source",
-            str(source),
-            "--output",
-            str(output),
-            "--system-prompt",
-            "Safe system",
-        ]
-    )
+    exit_code = main(["inspect-model", "--manifest", str(path)])
 
     assert exit_code == 0
-    manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["summary"]["examples"] == 4
-    assert (output / "train.jsonl").exists()
-    assert (output / "validation.jsonl").exists()
-    assert (output / "test.jsonl").exists()
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+    assert output["artifact_id"] == "medquad-model-001"
 
 
-def test_prepare_sft_command_returns_error_for_invalid_source(tmp_path: Path) -> None:
-    exit_code = main(["prepare-sft", "--source", str(tmp_path / "missing")])
+def test_inspect_model_command_returns_error_for_invalid_manifest(tmp_path: Path) -> None:
+    manifest = valid_manifest()
+    manifest["artifact_type"] = "unknown"
+    path = write_manifest(tmp_path / "model-manifest.json", manifest)
 
-    assert exit_code == 2
+    assert main(["inspect-model", "--manifest", str(path)]) == 2

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "tech-ai"
 version = "0.1.0"
-description = "Preparação, fine-tuning e avaliação do modelo médico do Tech Challenge."
+description = "Runtime de consumo do modelo médico pronto do Tech Challenge."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
