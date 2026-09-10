@@ -93,6 +93,7 @@ def inspect_model_artifact(manifest_path: Path) -> ModelArtifact:
         artifact_id=_required_string(data, "artifact_id", context=context),
         artifact_type=artifact_type,
         artifact_uri=_required_string(artifact, "uri", context=context),
+        artifact_revision=_optional_string(artifact, "revision", context=context),
         base_model_id=_required_string(base_model, "id", context=context),
         base_model_revision=_optional_string(base_model, "revision", context=context),
         tokenizer_id=_required_string(tokenizer, "id", context=context),

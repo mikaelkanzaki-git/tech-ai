@@ -1,1 +1,1 @@
-"""Serviços de preparação, treinamento e avaliação."""
+"""Casos de uso de carregamento, recuperação e inferência."""

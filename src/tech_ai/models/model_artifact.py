@@ -17,6 +17,7 @@ class ModelArtifact:
     artifact_id: str
     artifact_type: ArtifactType
     artifact_uri: str
+    artifact_revision: str | None
     base_model_id: str
     base_model_revision: str | None
     tokenizer_id: str
@@ -30,6 +31,7 @@ class ModelArtifact:
             "artifact_id": self.artifact_id,
             "artifact_type": self.artifact_type,
             "artifact_uri": self.artifact_uri,
+            "artifact_revision": self.artifact_revision,
             "base_model": {
                 "id": self.base_model_id,
                 "revision": self.base_model_revision,
