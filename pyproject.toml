@@ -11,7 +11,19 @@ requires-python = ">=3.12"
 authors = [
   { name = "FIAP Tech Challenge - Grupo" },
 ]
-dependencies = []
+dependencies = [
+  "chromadb==1.5.9",
+]
+
+[project.optional-dependencies]
+# Runtime pesado de inferência local. A busca no ChromaDB e os testes não
+# precisam baixar PyTorch nem os pesos do modelo.
+runtime = [
+  "accelerate>=1.10,<2",
+  "peft>=0.20,<1",
+  "torch==2.11.0",
+  "transformers>=5,<6",
+]
 
 [project.scripts]
 tech-ai = "tech_ai.runner:main"
@@ -26,6 +38,16 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tech_ai"]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers -p no:cacheprovider --cov=src/tech_ai --cov-report=term-missing"
@@ -47,9 +69,23 @@ python_version = "3.12"
 strict = true
 files = ["src", "tests"]
 
+[[tool.mypy.overrides]]
+module = [
+  "accelerate.*",
+  "chromadb.*",
+  "peft.*",
+  "torch.*",
+  "transformers.*",
+]
+ignore_missing_imports = true
+
 [tool.coverage.run]
 branch = true
-omit = ["src/tech_ai/runner.py"]
+omit = [
+  "src/tech_ai/runner.py",
+  # Exige PyTorch, GPU e pesos reais; a fronteira é coberta por testes leves.
+  "src/tech_ai/integrations/llm/huggingface.py",
+]
 
 [tool.coverage.report]
 fail_under = 90

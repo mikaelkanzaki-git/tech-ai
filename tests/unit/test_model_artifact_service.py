@@ -16,7 +16,10 @@ def valid_manifest() -> dict[str, Any]:
         "schema_version": "1.0",
         "artifact_id": "medquad-model-001",
         "artifact_type": "peft_adapter",
-        "artifact": {"uri": "hf://group/medquad-model-001"},
+        "artifact": {
+            "uri": "hf://group/medquad-model-001",
+            "revision": "c" * 40,
+        },
         "base_model": {"id": "provider/base-model", "revision": "base-revision"},
         "tokenizer": {"id": "provider/base-model", "revision": None},
         "provenance": {
@@ -43,6 +46,7 @@ def test_inspect_model_artifact_returns_runtime_projection(tmp_path: Path) -> No
     assert artifact.artifact_id == "medquad-model-001"
     assert artifact.artifact_type == "peft_adapter"
     assert artifact.artifact_uri == "hf://group/medquad-model-001"
+    assert artifact.artifact_revision == "c" * 40
     assert artifact.base_model_revision == "base-revision"
     assert artifact.tokenizer_revision is None
     assert artifact.as_dict()["provenance"]["producer"] == "tech-fine-tuning"
@@ -113,6 +117,14 @@ def test_inspect_model_artifact_rejects_invalid_optional_revision(tmp_path: Path
 
     with pytest.raises(ModelArtifactValidationError, match="string não vazia ou null"):
         inspect_model_artifact(path)
+
+
+def test_inspect_model_artifact_accepts_missing_artifact_revision(tmp_path: Path) -> None:
+    manifest = valid_manifest()
+    del manifest["artifact"]["revision"]
+    artifact = inspect_model_artifact(write_manifest(tmp_path / "manifest.json", manifest))
+
+    assert artifact.artifact_revision is None
 
 
 def test_manifest_reader_translates_file_and_json_errors(tmp_path: Path) -> None:

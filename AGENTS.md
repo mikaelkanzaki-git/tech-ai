@@ -15,6 +15,9 @@ Ao criar ou alterar código:
 - não importe Transformers, llama.cpp ou SDKs externos em `models/`;
 - não implemente preparação de dataset, treinamento ou avaliação de checkpoint neste serviço;
 - consuma somente artefatos publicados pelo `tech-fine-tuning`;
+- consulte o ChromaDB em modo somente-leitura; indexação e upsert pertencem ao `tech-ingestao`;
+- preserve na busca o mesmo modelo e a mesma dimensão de embeddings usados na indexação;
+- respostas médicas devem expor fontes e o aviso de uso acadêmico;
 - não faça commit, push ou PR sem autorização explícita do usuário.
 
 Antes de entregar mudanças, execute:

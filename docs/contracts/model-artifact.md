@@ -10,7 +10,8 @@ são necessários no runtime.
   "artifact_id": "medquad-model-001",
   "artifact_type": "peft_adapter",
   "artifact": {
-    "uri": "hf://grupo/medquad-model-001"
+    "uri": "hf://grupo/medquad-model-001",
+    "revision": "cccccccccccccccccccccccccccccccccccccccc"
   },
   "base_model": {
     "id": "provider/base-model",
@@ -34,5 +35,6 @@ Tipos inicialmente aceitos:
 - `merged_transformers`: pesos mesclados no formato Transformers.
 
 O runtime valida o manifesto antes de escolher a integração capaz de resolver `artifact.uri`.
-Essa integração ainda não foi criada porque depende da decisão entre execução local, Hugging
-Face, serviço em nuvem ou outro runtime.
+A revisão opcional fixa a versão publicada e evita que uma alteração futura no repositório mude
+silenciosamente o modelo executado. O runtime atual aceita repositórios Hugging Face com o
+prefixo `hf://` e caminhos locais.
