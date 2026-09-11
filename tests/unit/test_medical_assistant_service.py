@@ -39,9 +39,13 @@ def build_service(
 
 def test_answer_builds_grounded_prompt_and_returns_citations() -> None:
     result = KnowledgeSearchResult(
-        record_id="id-1",
+        record_id="id-1-chunk-1",
         text="0123456789 texto que será truncado",
-        metadata={"focus": "Asma", "source_url": "https://example.test/source"},
+        metadata={
+            "parent_record_id": "id-1",
+            "focus": "Asma",
+            "source_url": "https://example.test/source",
+        },
         distance=0.15,
     )
     service, llm = build_service((result,))

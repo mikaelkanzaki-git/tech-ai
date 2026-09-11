@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from tech_ai.errors import ConfigurationError
@@ -86,29 +86,66 @@ class Settings:
 
 @dataclass(frozen=True, slots=True)
 class ChromaSettings:
-    """Endereço da coleção escrita pelo ``tech-ingestao``."""
+    """Conexão com a coleção escrita pelo ``tech-ingestao``."""
 
+    mode: str = "local"
     host: str = "localhost"
     port: int = 8000
     collection: str = "medquad_knowledge_minilm_v1"
     ssl: bool = False
+    api_key: str | None = field(default=None, repr=False)
+    tenant: str | None = None
+    database: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"local", "cloud"}:
+            raise ConfigurationError("CHROMA_MODE deve ser local ou cloud.")
+        if not self.host:
+            raise ConfigurationError("CHROMA_HOST não pode ser vazio.")
+        if self.port <= 0:
+            raise ConfigurationError("CHROMA_PORT deve ser maior que zero.")
+        if not self.collection:
+            raise ConfigurationError("CHROMA_COLLECTION não pode ser vazia.")
+        if self.mode == "cloud":
+            missing = [
+                variable
+                for variable, value in (
+                    ("CHROMA_API_KEY", self.api_key),
+                    ("CHROMA_TENANT", self.tenant),
+                    ("CHROMA_DATABASE", self.database),
+                )
+                if not value
+            ]
+            if missing:
+                variables = ", ".join(missing)
+                raise ConfigurationError(
+                    f"Modo cloud requer as variáveis: {variables}."
+                )
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str] | None = None) -> ChromaSettings:
         values = os.environ if environment is None else environment
-        host = values.get("CHROMA_HOST", "localhost").strip()
+        mode = values.get("CHROMA_MODE", "local").strip().lower()
+        cloud_mode = mode == "cloud"
+        default_host = "api.trychroma.com" if cloud_mode else "localhost"
+        default_port = "443" if cloud_mode else "8000"
+        default_ssl = "true" if cloud_mode else "false"
+        host = values.get("CHROMA_HOST", default_host).strip()
         collection = values.get(
             "CHROMA_COLLECTION", "medquad_knowledge_minilm_v1"
         ).strip()
-        if not host:
-            raise ConfigurationError("CHROMA_HOST não pode ser vazio.")
-        if not collection:
-            raise ConfigurationError("CHROMA_COLLECTION não pode ser vazia.")
+        api_key = values.get("CHROMA_API_KEY", "").strip() or None
+        tenant = values.get("CHROMA_TENANT", "").strip() or None
+        database = values.get("CHROMA_DATABASE", "").strip() or None
         return cls(
+            mode=mode,
             host=host,
-            port=_positive_integer(values.get("CHROMA_PORT", "8000"), "CHROMA_PORT"),
+            port=_positive_integer(values.get("CHROMA_PORT", default_port), "CHROMA_PORT"),
             collection=collection,
-            ssl=_boolean(values.get("CHROMA_SSL", "false"), "CHROMA_SSL"),
+            ssl=_boolean(values.get("CHROMA_SSL", default_ssl), "CHROMA_SSL"),
+            api_key=api_key,
+            tenant=tenant,
+            database=database,
         )
 
 

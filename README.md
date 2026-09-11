@@ -45,7 +45,7 @@ para a equivalência completa com Java/Spring.
 
 - Python 3.12;
 - [uv](https://docs.astral.sh/uv/);
-- ChromaDB iniciado e previamente indexado pelo `tech-ingestao`;
+- ChromaDB local ou Chroma Cloud previamente indexado pelo `tech-ingestao`;
 - GPU NVIDIA recomendada para executar o Qwen3-4B localmente.
 
 O modelo no Hugging Face é público. `HF_TOKEN` não é necessário para baixá-lo.
@@ -58,7 +58,35 @@ uv sync --dev
 
 Esse ambiente permite validar o manifesto e consultar o ChromaDB sem instalar PyTorch.
 
-## 2. Iniciar o ChromaDB
+## 2. Configurar o ChromaDB
+
+### Chroma Cloud (recomendado para o ambiente compartilhado)
+
+Crie o arquivo local `.env` a partir do exemplo e informe as credenciais geradas no painel do
+Chroma Cloud:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+No `.env`, use:
+
+```dotenv
+CHROMA_MODE=cloud
+CHROMA_HOST=api.trychroma.com
+CHROMA_PORT=443
+CHROMA_SSL=true
+CHROMA_API_KEY=sua-chave
+CHROMA_TENANT=seu-tenant
+CHROMA_DATABASE=fiap-tech-challenge-3
+CHROMA_COLLECTION=medquad_knowledge_minilm_v1
+```
+
+O arquivo `.env` é ignorado pelo Git. Nunca publique `CHROMA_API_KEY`. A coleção deve ter sido
+criada e preenchida pelo `tech-ingestao`; o `tech-ai` possui acesso somente de leitura no fluxo da
+aplicação.
+
+### ChromaDB local (alternativa)
 
 No repositório `tech-ingestao`:
 
@@ -66,7 +94,8 @@ No repositório `tech-ingestao`:
 docker compose up -d chroma
 ```
 
-A coleção esperada é `medquad_knowledge_minilm_v1`. Caso ainda esteja vazia, execute a indexação pelo
+A coleção esperada é `medquad_knowledge_minilm_v1`. O modo local continua sendo o padrão quando
+`CHROMA_MODE` não é informado. Caso a coleção ainda esteja vazia, execute a indexação pelo
 `tech-ingestao` antes de continuar.
 
 ## 3. Embedding local
@@ -76,7 +105,7 @@ O projeto usa o mesmo contrato local da indexação:
 - modelo ONNX `all-MiniLM-L6-v2`;
 - dimensão `384`;
 - coleção `medquad_knowledge_minilm_v1`;
-- ChromaDB em `localhost:8000`.
+- destino ChromaDB selecionado por `CHROMA_MODE=local|cloud`.
 
 O modelo de embeddings é baixado na primeira busca ou indexação e depois reutilizado do cache
 local. Nenhuma chave de API é necessária. Veja todas as opções em [`.env.example`](.env.example).
@@ -97,7 +126,7 @@ O manifesto padrão em [`configs/models/tech3-v3.json`](configs/models/tech3-v3.
 ## 5. Testar apenas a recuperação semântica
 
 ```powershell
-uv run tech-ai search `
+uv run --env-file .env tech-ai search `
   --question "What is post-traumatic stress disorder?" `
   --limit 4
 ```
@@ -116,7 +145,7 @@ uv sync --dev --extra runtime
 Na primeira execução, o Hugging Face pode baixar vários gigabytes do modelo base. Depois:
 
 ```powershell
-uv run tech-ai ask `
+uv run --env-file .env tech-ai ask `
   --question "What is post-traumatic stress disorder?" `
   --limit 4
 ```
@@ -131,6 +160,8 @@ repetição e bloqueio de n-gramas repetidos. Esses parâmetros podem ser ajusta
 O comando `ask` não confia apenas no prompt para controlar o modelo:
 
 - cada fonte recebe um número estável (`[1]`, `[2]` etc.);
+- quando a fonte é um fragmento, `record_id` expõe o ID canônico do documento de origem informado
+  em `parent_record_id`;
 - a resposta precisa citar pelo menos uma fonte existente;
 - uma resposta sem citações válidas é refeita uma vez e, se continuar inválida, substituída pelo
   trecho `Answer:` da fonte mais relevante;

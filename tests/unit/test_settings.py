@@ -75,11 +75,50 @@ def test_chroma_settings_use_shared_contract_and_overrides() -> None:
     )
 
 
+def test_chroma_cloud_settings_use_secure_defaults() -> None:
+    settings = ChromaSettings.from_environment(
+        {
+            "CHROMA_MODE": "cloud",
+            "CHROMA_API_KEY": "secret-value",
+            "CHROMA_TENANT": "tenant-id",
+            "CHROMA_DATABASE": "fiap-tech-challenge-3",
+        }
+    )
+
+    assert settings.mode == "cloud"
+    assert settings.host == "api.trychroma.com"
+    assert settings.port == 443
+    assert settings.ssl is True
+    assert settings.api_key == "secret-value"
+    assert settings.tenant == "tenant-id"
+    assert settings.database == "fiap-tech-challenge-3"
+    assert "secret-value" not in repr(settings)
+
+
+@pytest.mark.parametrize(
+    "missing_variable",
+    ["CHROMA_API_KEY", "CHROMA_TENANT", "CHROMA_DATABASE"],
+)
+def test_chroma_cloud_settings_require_credentials(missing_variable: str) -> None:
+    environment = {
+        "CHROMA_MODE": "cloud",
+        "CHROMA_API_KEY": "secret-value",
+        "CHROMA_TENANT": "tenant-id",
+        "CHROMA_DATABASE": "database-id",
+    }
+    del environment[missing_variable]
+
+    with pytest.raises(ConfigurationError, match=missing_variable):
+        ChromaSettings.from_environment(environment)
+
+
 @pytest.mark.parametrize(
     "environment",
     [
+        {"CHROMA_MODE": "other"},
         {"CHROMA_HOST": " "},
         {"CHROMA_COLLECTION": " "},
+        {"CHROMA_PORT": "0"},
         {"CHROMA_SSL": "perhaps"},
     ],
 )

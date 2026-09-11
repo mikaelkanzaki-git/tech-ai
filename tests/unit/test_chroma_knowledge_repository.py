@@ -44,6 +44,75 @@ class BrokenCollection(FakeCollection):
         raise RuntimeError("offline")
 
 
+class FakeClient:
+    def __init__(self, collection: FakeCollection) -> None:
+        self.collection = collection
+
+    def get_collection(
+        self,
+        *,
+        name: str,
+        embedding_function: object | None,
+    ) -> FakeCollection:
+        assert name == "medquad_knowledge_minilm_v1"
+        assert embedding_function is None
+        return self.collection
+
+
+def test_repository_uses_http_client_in_local_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    received: dict[str, object] = {}
+
+    def fake_http_client(*, host: str, port: int, ssl: bool) -> FakeClient:
+        received.update(host=host, port=port, ssl=ssl)
+        return FakeClient(FakeCollection())
+
+    monkeypatch.setattr(
+        "tech_ai.integrations.chroma.knowledge_repository.chromadb.HttpClient",
+        fake_http_client,
+    )
+
+    ChromaKnowledgeRepository(ChromaSettings())
+
+    assert received == {"host": "localhost", "port": 8000, "ssl": False}
+
+
+def test_repository_uses_cloud_client_in_cloud_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    received: dict[str, object] = {}
+
+    def fake_cloud_client(**parameters: object) -> FakeClient:
+        received.update(parameters)
+        return FakeClient(FakeCollection())
+
+    monkeypatch.setattr(
+        "tech_ai.integrations.chroma.knowledge_repository.chromadb.CloudClient",
+        fake_cloud_client,
+    )
+    settings = ChromaSettings(
+        mode="cloud",
+        host="api.trychroma.com",
+        port=443,
+        ssl=True,
+        api_key="secret-value",
+        tenant="tenant-id",
+        database="database-id",
+    )
+
+    ChromaKnowledgeRepository(settings)
+
+    assert received == {
+        "tenant": "tenant-id",
+        "database": "database-id",
+        "api_key": "secret-value",
+        "cloud_host": "api.trychroma.com",
+        "cloud_port": 443,
+        "enable_ssl": True,
+    }
+
+
 def test_query_normalizes_chroma_response() -> None:
     collection = FakeCollection()
     repository = ChromaKnowledgeRepository(ChromaSettings(), collection=collection)

@@ -45,9 +45,14 @@ class KnowledgeCitation:
     ) -> KnowledgeCitation:
         focus = result.metadata.get("focus")
         source_url = result.metadata.get("source_url")
+        parent_record_id = result.metadata.get("parent_record_id")
         return cls(
             number=number,
-            record_id=result.record_id,
+            record_id=(
+                parent_record_id
+                if isinstance(parent_record_id, str) and parent_record_id
+                else result.record_id
+            ),
             distance=result.distance,
             focus=focus if isinstance(focus, str) else None,
             source_url=source_url if isinstance(source_url, str) else None,
